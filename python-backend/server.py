@@ -152,6 +152,7 @@ def main_process():
                 beam_size=5,                
                 condition_on_previous_text=False,
                 vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500),
                 word_timestamps=False
             )
             
