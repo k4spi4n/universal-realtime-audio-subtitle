@@ -39,7 +39,7 @@ except zmq.ZMQError as e:
 
 # --- CẤU HÌNH AUDIO & MODEL ---
 # Model
-MODEL_SIZE = "large-v3-turbo"
+MODEL_SIZE = "turbo"
 device = "cuda"
 compute_type = "float16"
 
@@ -136,9 +136,8 @@ def main_process():
             # Cấu hình tối ưu tốc độ nhất có thể cho Whisper
             segments, _ = model.transcribe(
                 audio_buffer, 
-                beam_size=3,                # Greedy Search: Tốc độ tối đa
-                best_of=1,
-                condition_on_previous_text=False, # Không cần nhớ câu trước (giảm lag)
+                beam_size=5,                
+                condition_on_previous_text=False,
                 vad_filter=True,
                 word_timestamps=False
             )
