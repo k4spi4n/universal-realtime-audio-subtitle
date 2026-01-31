@@ -91,9 +91,10 @@ def main_process():
     silence_start_time = None
     
     # Config Logic
-    TRANSCRIBE_INTERVAL = 0.25  # Nhận diện mỗi 0.25s (Tăng tốc độ phản hồi)
-    SILENCE_THRESHOLD_DB = 500  # Ngưỡng biên độ để coi là im lặng (Tùy chỉnh nếu mic ồn)
-    SILENCE_DURATION_LIMIT = 0.6 # Nếu im lặng quá 0.6s thì chốt câu và xóa buffer
+    TRANSCRIBE_INTERVAL = 0.25  # Nhận diện mỗi 0.25s
+    SILENCE_THRESHOLD_DB = 500  
+    SILENCE_DURATION_LIMIT = 0.5 # Giảm xuống 0.5s để chốt câu nhanh hơn
+    MAX_AUDIO_DURATION = 10.0   # Tối đa 10 giây audio trong bộ nhớ
 
     print(">>> REALTIME ENGINE STARTED <<<")
     
@@ -113,15 +114,22 @@ def main_process():
             new_audio = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32768.0
             audio_buffer = np.concatenate((audio_buffer, new_audio))
             
-            # --- SIMPLE VAD (Voice Activity Detection) ---
-            # Tính biên độ trung bình của chunk mới nhất để xem có tiếng không
+            # --- SIMPLE VAD ---
             amplitude = np.abs(new_audio).mean() * 32768
-            
             if amplitude < SILENCE_THRESHOLD_DB:
-                if silence_start_time is None:
-                    silence_start_time = time.time()
+                if silence_start_time is None: silence_start_time = time.time()
             else:
-                silence_start_time = None # Có tiếng nói, reset bộ đếm im lặng
+                silence_start_time = None
+
+        # --- ROLLING BUFFER LOGIC (Quan trọng cho Realtime) ---
+        # Nếu buffer quá dài (> 10s), cắt bỏ phần đầu, chỉ giữ lại 2s cuối làm ngữ cảnh
+        current_duration = len(audio_buffer) / RATE
+        if current_duration > MAX_AUDIO_DURATION:
+            keep_samples = int(RATE * 2.0) # Giữ 2 giây cuối
+            audio_buffer = audio_buffer[-keep_samples:]
+            # Reset silence timer để tránh logic chốt câu bị xung đột
+            silence_start_time = None 
+        # ------------------------------------------------------
 
         # 2. Kiểm tra điều kiện để Transcribe
         now = time.time()

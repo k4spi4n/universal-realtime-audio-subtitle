@@ -1,137 +1,64 @@
-Using Loopback: Stereo Mix (Realtek(R) Audio)
-Microphone/System Audio Stream Started.
-Traceback (most recent call last):
-  File "D:\CODE\PROJECT CAS\python-backend\server.py", line 162, in <module>
-    main_process()
-    ~~~~~~~~~~~~^^
-  File "D:\CODE\PROJECT CAS\python-backend\server.py", line 135, in main_process
-    text = " ".join([s.text for s.text in segments]).strip()
-                                ^
-NameError: name 's' is not defined. Did you mean: 'os'?
-
 [{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "errors(1): 1:1-1:18",
-	"severity": 4,
-	"message": "Missing mandatory Classpath entries. Resolve Project Problems.",
-	"startLineNumber": 1,
-	"startColumn": 1,
-	"endLineNumber": 1,
-	"endColumn": 18,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "hints(2): 127:22-127:31",
-	"severity": 4,
-	"message": "Can be replaced with multicatch or several catch clauses catching specific exceptions",
-	"startLineNumber": 127,
-	"startColumn": 22,
-	"endLineNumber": 127,
-	"endColumn": 31,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "hints(1): 128:19-128:34",
-	"severity": 4,
-	"message": "Print Stack Trace",
-	"startLineNumber": 128,
-	"startColumn": 19,
-	"endLineNumber": 128,
-	"endColumn": 34,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/VoskEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "errors(1): 1:1-1:18",
-	"severity": 4,
-	"message": "Missing mandatory Classpath entries. Resolve Project Problems.",
-	"startLineNumber": 1,
-	"startColumn": 1,
-	"endLineNumber": 1,
-	"endColumn": 18,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/VoskEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "hints(1): 13:1-13:28",
-	"severity": 4,
-	"message": "Unused Import",
-	"startLineNumber": 13,
-	"startColumn": 1,
-	"endLineNumber": 13,
-	"endColumn": 28,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/VoskEngine.java",
+	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
 	"owner": "_generated_diagnostic_collection_name_#5",
-	"code": "268435844",
-	"severity": 4,
-	"message": "The import java.io.IOException is never used",
+	"code": "536871586",
+	"severity": 8,
+	"message": "Local variable displayText is required to be final or effectively final based on its usage",
 	"source": "Java",
-	"startLineNumber": 13,
-	"startColumn": 8,
-	"endLineNumber": 13,
-	"endColumn": 27,
-	"modelVersionId": 1,
-	"tags": [
-		1
-	],
-	"origin": "extHost1"
-},{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/VoskEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#5",
-	"code": "536871799",
-	"severity": 4,
-	"message": "Resource leak: 'recognizer' is never closed",
-	"source": "Java",
-	"startLineNumber": 47,
-	"startColumn": 32,
-	"endLineNumber": 47,
-	"endColumn": 42,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/VoskEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "hints(2): 106:22-106:31",
-	"severity": 4,
-	"message": "Can be replaced with multicatch or several catch clauses catching specific exceptions",
-	"startLineNumber": 106,
+	"startLineNumber": 89,
 	"startColumn": 22,
-	"endLineNumber": 106,
-	"endColumn": 31,
+	"endLineNumber": 89,
+	"endColumn": 33,
 	"modelVersionId": 1,
 	"origin": "extHost1"
 },{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/VoskEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "hints(3): 107:19-107:34",
-	"severity": 4,
-	"message": "Print Stack Trace",
-	"startLineNumber": 107,
-	"startColumn": 19,
-	"endLineNumber": 107,
-	"endColumn": 34,
+	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
+	"owner": "_generated_diagnostic_collection_name_#5",
+	"code": "536871575",
+	"severity": 8,
+	"message": "Local variable displayText defined in an enclosing scope must be final or effectively final",
+	"source": "Java",
+	"startLineNumber": 103,
+	"startColumn": 58,
+	"endLineNumber": 103,
+	"endColumn": 69,
 	"modelVersionId": 1,
 	"origin": "extHost1"
 },{
 	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
 	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "errors(1): 1:1-1:18",
-	"severity": 4,
-	"message": "Missing mandatory Classpath entries. Resolve Project Problems.",
-	"startLineNumber": 1,
-	"startColumn": 1,
-	"endLineNumber": 1,
-	"endColumn": 18,
+	"code": "errors(1): 103:58-103:69",
+	"severity": 8,
+	"message": "local variables referenced from a lambda expression must be final or effectively final",
+	"startLineNumber": 103,
+	"startColumn": 58,
+	"endLineNumber": 103,
+	"endColumn": 69,
+	"modelVersionId": 1,
+	"origin": "extHost1"
+},{
+	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
+	"owner": "_generated_diagnostic_collection_name_#5",
+	"code": "536871575",
+	"severity": 8,
+	"message": "Local variable displayText defined in an enclosing scope must be final or effectively final",
+	"source": "Java",
+	"startLineNumber": 103,
+	"startColumn": 92,
+	"endLineNumber": 103,
+	"endColumn": 103,
+	"modelVersionId": 1,
+	"origin": "extHost1"
+},{
+	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
+	"owner": "_generated_diagnostic_collection_name_#1",
+	"code": "errors(2): 103:92-103:103",
+	"severity": 8,
+	"message": "local variables referenced from a lambda expression must be final or effectively final",
+	"startLineNumber": 103,
+	"startColumn": 92,
+	"endLineNumber": 103,
+	"endColumn": 103,
 	"modelVersionId": 1,
 	"origin": "extHost1"
 },{
@@ -147,27 +74,15 @@ NameError: name 's' is not defined. Did you mean: 'os'?
 	"modelVersionId": 1,
 	"origin": "extHost1"
 },{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/pom.xml",
+	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
 	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "errors:1-null",
-	"severity": 2,
-	"message": "Convert to release option for strict compatibility checks.",
-	"startLineNumber": 12,
-	"startColumn": 9,
-	"endLineNumber": 12,
-	"endColumn": 57,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/D:/CODE/PROJECT CAS/audio-test/pom.xml",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "errors:2-null",
-	"severity": 2,
-	"message": "Convert to release option for strict compatibility checks.",
-	"startLineNumber": 13,
-	"startColumn": 9,
-	"endLineNumber": 13,
-	"endColumn": 57,
+	"code": "hints(2): 98:26-98:37",
+	"severity": 4,
+	"message": "Variable currentText is never read",
+	"startLineNumber": 98,
+	"startColumn": 26,
+	"endLineNumber": 98,
+	"endColumn": 37,
 	"modelVersionId": 1,
 	"origin": "extHost1"
 }]
