@@ -6,7 +6,7 @@ import org.zeromq.SocketType;
 import org.zeromq.ZContext;
 import org.zeromq.ZMQ;
 
-public class ZmqEngine {
+public class WhisperEngine {
 
     private final Label subtitleLabel;
     private final Label statusLabel;
@@ -14,7 +14,7 @@ public class ZmqEngine {
     private Thread listenerThread;
     private Process pythonProcess;
 
-    public ZmqEngine(Label subtitleLabel, Label statusLabel) {
+    public WhisperEngine(Label subtitleLabel, Label statusLabel) {
         this.subtitleLabel = subtitleLabel;
         this.statusLabel = statusLabel;
     }
