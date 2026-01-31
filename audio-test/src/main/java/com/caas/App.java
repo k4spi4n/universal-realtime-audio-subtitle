@@ -21,7 +21,40 @@ public class App extends Application {
 
     @Override
     public void start(Stage controlStage) {
-        // ... (giữ nguyên code cũ) ...
+        // --- 1. Subtitle Window (Transparent) ---
+        Label subtitleLabel = new Label("Waiting for python backend...");
+        subtitleLabel.setStyle("-fx-background-color: rgba(0, 0, 0, 0.5); -fx-text-fill: white; -fx-padding: 10px; -fx-font-size: 24px;");
+
+        StackPane subRoot = new StackPane(subtitleLabel);
+        subRoot.setStyle("-fx-background-color: transparent;");
+
+        // Draggable logic
+        final double[] xOffset = new double[1];
+        final double[] yOffset = new double[1];
+        subRoot.setOnMousePressed(event -> {
+            xOffset[0] = event.getSceneX();
+            yOffset[0] = event.getSceneY();
+        });
+        subRoot.setOnMouseDragged(event -> {
+            subtitleStage.setX(event.getScreenX() - xOffset[0]);
+            subtitleStage.setY(event.getScreenY() - yOffset[0]);
+        });
+
+        Scene subScene = new Scene(subRoot, 1000, 150);
+        subScene.setFill(Color.TRANSPARENT);
+
+        subtitleStage = new Stage();
+        subtitleStage.initStyle(StageStyle.TRANSPARENT);
+        subtitleStage.setAlwaysOnTop(true);
+        subtitleStage.setScene(subScene);
+
+        // Position at bottom
+        javafx.geometry.Rectangle2D screenBounds = javafx.stage.Screen.getPrimary().getVisualBounds();
+        subtitleStage.setX((screenBounds.getWidth() - 1000) / 2);
+        subtitleStage.setY(screenBounds.getHeight() - 200);
+        subtitleStage.show();
+
+        // --- 2. Control Panel Window ---
         Label statusLabel = new Label("Status: Ready");
         statusLabel.setStyle("-fx-font-weight: bold;");
 

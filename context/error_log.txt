@@ -1,88 +1,99 @@
-[{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#5",
-	"code": "536871586",
-	"severity": 8,
-	"message": "Local variable displayText is required to be final or effectively final based on its usage",
-	"source": "Java",
-	"startLineNumber": 89,
-	"startColumn": 22,
-	"endLineNumber": 89,
-	"endColumn": 33,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#5",
-	"code": "536871575",
-	"severity": 8,
-	"message": "Local variable displayText defined in an enclosing scope must be final or effectively final",
-	"source": "Java",
-	"startLineNumber": 103,
-	"startColumn": 58,
-	"endLineNumber": 103,
-	"endColumn": 69,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "errors(1): 103:58-103:69",
-	"severity": 8,
-	"message": "local variables referenced from a lambda expression must be final or effectively final",
-	"startLineNumber": 103,
-	"startColumn": 58,
-	"endLineNumber": 103,
-	"endColumn": 69,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#5",
-	"code": "536871575",
-	"severity": 8,
-	"message": "Local variable displayText defined in an enclosing scope must be final or effectively final",
-	"source": "Java",
-	"startLineNumber": 103,
-	"startColumn": 92,
-	"endLineNumber": 103,
-	"endColumn": 103,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "errors(2): 103:92-103:103",
-	"severity": 8,
-	"message": "local variables referenced from a lambda expression must be final or effectively final",
-	"startLineNumber": 103,
-	"startColumn": 92,
-	"endLineNumber": 103,
-	"endColumn": 103,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "hints(1): 52:23-52:38",
-	"severity": 4,
-	"message": "Print Stack Trace",
-	"startLineNumber": 52,
-	"startColumn": 23,
-	"endLineNumber": 52,
-	"endColumn": 38,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-},{
-	"resource": "/d:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/ZmqEngine.java",
-	"owner": "_generated_diagnostic_collection_name_#1",
-	"code": "hints(2): 98:26-98:37",
-	"severity": 4,
-	"message": "Variable currentText is never read",
-	"startLineNumber": 98,
-	"startColumn": 26,
-	"endLineNumber": 98,
-	"endColumn": 37,
-	"modelVersionId": 1,
-	"origin": "extHost1"
-}]
+Building application...
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ------------------------< com.caas:audio-test >-------------------------
+[INFO] Building audio-test 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[WARNING] 6 problems were encountered while building the effective model for org.openjfx:javafx-controls:jar:21 during dependency collection step for project (use -X to see details)
+[INFO]
+[INFO] --- clean:3.2.0:clean (default-clean) @ audio-test ---
+[INFO] Deleting D:\CODE\PROJECT CAS\audio-test\target
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ audio-test ---
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ audio-test ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 3 source files with javac [debug target 21] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR :
+[INFO] -------------------------------------------------------------
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[33,36] cannot find symbol
+  symbol:   variable subtitleLabel
+  location: class com.caas.App
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[45,37] cannot find symbol
+  symbol:   variable subtitleLabel
+  location: class com.caas.App
+[INFO] 2 errors
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.989 s
+[INFO] Finished at: 2026-01-31T20:53:48+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project audio-test: Compilation failure: Compilation failure:
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[33,36] cannot find symbol
+[ERROR]   symbol:   variable subtitleLabel
+[ERROR]   location: class com.caas.App
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[45,37] cannot find symbol
+[ERROR]   symbol:   variable subtitleLabel
+[ERROR]   location: class com.caas.App
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+
+Running application (Java Client + Python Backend)...
+[INFO] Scanning for projects...
+[INFO]
+[INFO] ------------------------< com.caas:audio-test >-------------------------
+[INFO] Building audio-test 1.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO]
+[INFO] >>> javafx:0.0.8:run (default-cli) > process-classes @ audio-test >>>
+[WARNING] 6 problems were encountered while building the effective model for org.openjfx:javafx-controls:jar:21 during dependency collection step for project (use -X to see details)
+[INFO]
+[INFO] --- resources:3.3.1:resources (default-resources) @ audio-test ---
+[INFO] Copying 0 resource from src\main\resources to target\classes
+[INFO]
+[INFO] --- compiler:3.13.0:compile (default-compile) @ audio-test ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 3 source files with javac [debug target 21] to target\classes
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR :
+[INFO] -------------------------------------------------------------
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[33,36] cannot find symbol
+  symbol:   variable subtitleLabel
+  location: class com.caas.App
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[45,37] cannot find symbol
+  symbol:   variable subtitleLabel
+  location: class com.caas.App
+[INFO] 2 errors
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  0.954 s
+[INFO] Finished at: 2026-01-31T20:53:50+07:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.13.0:compile (default-compile) on project audio-test: Compilation failure: Compilation failure:
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[33,36] cannot find symbol
+[ERROR]   symbol:   variable subtitleLabel
+[ERROR]   location: class com.caas.App
+[ERROR] /D:/CODE/PROJECT CAS/audio-test/src/main/java/com/caas/App.java:[45,37] cannot find symbol
+[ERROR]   symbol:   variable subtitleLabel
+[ERROR]   location: class com.caas.App
+[ERROR] -> [Help 1]
+[ERROR]
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR]
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException
+Press any key to continue . . .

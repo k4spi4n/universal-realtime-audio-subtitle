@@ -1,0 +1,32 @@
+# Thư mục chứa log và context tạm thời
+context/
+.gemini/
+
+# Maven - Các file biên dịch và thư viện
+target/
+*.class
+*.jar
+*.war
+*.ear
+
+# Python - Các file cache và môi trường ảo
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+.env
+.venv
+*.wav
+*.log
+
+# IDE - Cấu hình cá nhân của Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Hệ điều hành
+Thumbs.db
+Desktop.ini
+.DS_Store
