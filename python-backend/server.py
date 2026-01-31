@@ -89,12 +89,13 @@ def main_process():
     # Các biến kiểm soát trạng thái
     last_transcribe_time = time.time()
     silence_start_time = None
+    last_sent_text = ""
     
     # Config Logic
-    TRANSCRIBE_INTERVAL = 0.1   # Cực nhanh: 100ms một lần
-    SILENCE_THRESHOLD_DB = 600  # Tăng ngưỡng ồn lên một chút
-    SILENCE_DURATION_LIMIT = 0.4 # Ngắt câu cực nhanh khi dừng nói
-    MAX_AUDIO_DURATION = 3.0    # Cửa sổ âm thanh hẹp (4s) để tập trung vào hiện tại
+    TRANSCRIBE_INTERVAL = 0.25
+    SILENCE_THRESHOLD_DB = 600  
+    SILENCE_DURATION_LIMIT = 0.5
+    MAX_AUDIO_DURATION = 10.0
 
     print(">>> ABSOLUTE REALTIME ENGINE (TURBO MODE) <<<")
     
@@ -144,23 +145,25 @@ def main_process():
         # Buffer chỉ cần > 0.1s là xử lý ngay
         if len(audio_buffer) > RATE * 0.1 and (now - last_transcribe_time > TRANSCRIBE_INTERVAL):
             
-            # Cấu hình tối ưu tốc độ nhất có thể cho Whisper
-            # ⚡ Bolt Optimization: Removed duplicate dead code block that was unreachable
-            # and potentially used lower accuracy beam_size=1
             segments, _ = model.transcribe(
                 audio_buffer, 
-                beam_size=5,                
-                condition_on_previous_text=False,
+                beam_size=3,                
+                condition_on_previous_text=True,
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
-                word_timestamps=False
+                word_timestamps=False,
+                compression_ratio_threshold=2.4,
+                log_prob_threshold=-1.0,
+                no_speech_threshold=0.6
             )
             
             text = " ".join([s.text for s in segments]).strip()
             
-            if text:
-                print(f"\r> {text}" + " " * 10, end="", flush=True) # Xóa ký tự thừa cuối dòng
+            # Chỉ gửi update khi văn bản thực sự thay đổi
+            if text and text != last_sent_text:
+                print(f"\r> {text}" + " " * 10, end="", flush=True) 
                 socket.send_string(text)
+                last_sent_text = text
             
             last_transcribe_time = now
 
@@ -169,10 +172,7 @@ def main_process():
             if len(audio_buffer) > 0:
                 audio_buffer = np.array([], dtype=np.float32)
                 silence_start_time = None
-                # Gửi tín hiệu xóa màn hình nếu cần thiết (tùy chọn)
         
-        # ⚡ Bolt Optimization: Removed redundant sleep and duplicate reset logic.
-        # The blocking queue.get acts as the pacer.
 
 if __name__ == "__main__":
     # Start Thread thu âm
