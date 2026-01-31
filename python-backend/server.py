@@ -91,17 +91,16 @@ def main_process():
     silence_start_time = None
     
     # Config Logic
-    TRANSCRIBE_INTERVAL = 0.25  # Nhận diện mỗi 0.25s
-    SILENCE_THRESHOLD_DB = 500  
-    SILENCE_DURATION_LIMIT = 0.5 # Giảm xuống 0.5s để chốt câu nhanh hơn
-    MAX_AUDIO_DURATION = 10.0   # Tối đa 10 giây audio trong bộ nhớ
+    TRANSCRIBE_INTERVAL = 0.1   # Cực nhanh: 100ms một lần
+    SILENCE_THRESHOLD_DB = 600  # Tăng ngưỡng ồn lên một chút
+    SILENCE_DURATION_LIMIT = 0.4 # Ngắt câu cực nhanh khi dừng nói
+    MAX_AUDIO_DURATION = 3.0    # Cửa sổ âm thanh hẹp (4s) để tập trung vào hiện tại
 
-    print(">>> REALTIME ENGINE STARTED <<<")
+    print(">>> ABSOLUTE REALTIME ENGINE (TURBO MODE) <<<")
     
     while True:
-        # 1. Lấy dữ liệu từ Queue (Non-blocking hoặc timeout cực ngắn)
+        # 1. Lấy dữ liệu từ Queue (Non-blocking)
         try:
-            # Lấy hết dữ liệu đang chờ trong queue để xử lý một thể
             new_data_list = []
             while True:
                 new_data_list.append(raw_queue.get_nowait())
@@ -109,7 +108,6 @@ def main_process():
             pass
 
         if new_data_list:
-            # Gộp byte và convert sang float32
             raw_bytes = b''.join(new_data_list)
             new_audio = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32768.0
             audio_buffer = np.concatenate((audio_buffer, new_audio))
@@ -121,17 +119,46 @@ def main_process():
             else:
                 silence_start_time = None
 
-        # --- ROLLING BUFFER LOGIC (Quan trọng cho Realtime) ---
-        # Nếu buffer quá dài (> 10s), cắt bỏ phần đầu, chỉ giữ lại 2s cuối làm ngữ cảnh
+        # --- AGGRESSIVE ROLLING BUFFER ---
+        # Chỉ giữ lại 4s cuối cùng bất kể tình huống nào. 
+        # Ưu tiên hiển thị những gì đang nói NGAY BÂY GIỜ.
         current_duration = len(audio_buffer) / RATE
         if current_duration > MAX_AUDIO_DURATION:
-            keep_samples = int(RATE * 2.0) # Giữ 2 giây cuối
+            keep_samples = int(RATE * MAX_AUDIO_DURATION)
             audio_buffer = audio_buffer[-keep_samples:]
-            # Reset silence timer để tránh logic chốt câu bị xung đột
-            silence_start_time = None 
-        # ------------------------------------------------------
+        
+        # 2. Transcribe
+        now = time.time()
+        
+        # Buffer chỉ cần > 0.1s là xử lý ngay
+        if len(audio_buffer) > RATE * 0.1 and (now - last_transcribe_time > TRANSCRIBE_INTERVAL):
+            
+            # Cấu hình tối ưu tốc độ nhất có thể cho Whisper
+            segments, _ = model.transcribe(
+                audio_buffer, 
+                beam_size=3,                # Greedy Search: Tốc độ tối đa
+                best_of=1,
+                condition_on_previous_text=False, # Không cần nhớ câu trước (giảm lag)
+                vad_filter=True,
+                word_timestamps=False
+            )
+            
+            text = " ".join([s.text for s in segments]).strip()
+            
+            if text:
+                print(f"\r> {text}" + " " * 10, end="", flush=True) # Xóa ký tự thừa cuối dòng
+                socket.send_string(text)
+            
+            last_transcribe_time = now
 
-        # 2. Kiểm tra điều kiện để Transcribe
+        # 3. Logic Reset Buffer (Chốt câu nhanh)
+        if silence_start_time and (now - silence_start_time > SILENCE_DURATION_LIMIT):
+            if len(audio_buffer) > 0:
+                audio_buffer = np.array([], dtype=np.float32)
+                silence_start_time = None
+                # Gửi tín hiệu xóa màn hình nếu cần thiết (tùy chọn)
+
+        time.sleep(0.005) # Sleep cực ngắn 5ms
         now = time.time()
         
         # Chỉ nhận diện nếu buffer đủ dài (>0.2s) và đã đến chu kỳ transcribe
