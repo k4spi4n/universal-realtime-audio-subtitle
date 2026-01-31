@@ -99,11 +99,22 @@ def main_process():
     print(">>> ABSOLUTE REALTIME ENGINE (TURBO MODE) <<<")
     
     while True:
-        # 1. Lấy dữ liệu từ Queue (Non-blocking)
+        # 1. Lấy dữ liệu từ Queue (Blocking with Timeout)
+        # ⚡ Bolt Optimization: Use blocking wait with timeout instead of busy loop
+        # This reduces CPU idle usage significantly while maintaining responsiveness.
+        new_data_list = []
         try:
-            new_data_list = []
+            # Wait up to 50ms for data (heartbeat).
+            # If no data, we still check VAD/Timers below.
+            first_chunk = raw_queue.get(timeout=0.05)
+            new_data_list.append(first_chunk)
+
+            # Drain remaining data immediately
             while True:
-                new_data_list.append(raw_queue.get_nowait())
+                try:
+                    new_data_list.append(raw_queue.get_nowait())
+                except queue.Empty:
+                    break
         except queue.Empty:
             pass
 
@@ -134,6 +145,8 @@ def main_process():
         if len(audio_buffer) > RATE * 0.1 and (now - last_transcribe_time > TRANSCRIBE_INTERVAL):
             
             # Cấu hình tối ưu tốc độ nhất có thể cho Whisper
+            # ⚡ Bolt Optimization: Removed duplicate dead code block that was unreachable
+            # and potentially used lower accuracy beam_size=1
             segments, _ = model.transcribe(
                 audio_buffer, 
                 beam_size=5,                
@@ -156,36 +169,9 @@ def main_process():
                 audio_buffer = np.array([], dtype=np.float32)
                 silence_start_time = None
                 # Gửi tín hiệu xóa màn hình nếu cần thiết (tùy chọn)
-
-        time.sleep(0.005) # Sleep cực ngắn 5ms
-        now = time.time()
         
-        # Chỉ nhận diện nếu buffer đủ dài (>0.2s) và đã đến chu kỳ transcribe
-        if len(audio_buffer) > RATE * 0.2 and (now - last_transcribe_time > TRANSCRIBE_INTERVAL):
-            
-            # Transcribe toàn bộ buffer hiện tại
-            segments, _ = model.transcribe(audio_buffer, beam_size=1, language=None, vad_filter=True)
-            
-            text = " ".join([s.text for s in segments]).strip()
-            
-            if text:
-                # In ra console (Ghi đè dòng cũ để gọn, tùy chọn)
-                print(f"\r> {text}", end="", flush=True)
-                socket.send_string(text)
-            
-            last_transcribe_time = now
-
-        # 3. Logic Reset Buffer (Chốt câu)
-        # Nếu im lặng quá lâu, ta coi như hết câu -> Xóa buffer để sẵn sàng cho câu mới
-        if silence_start_time and (now - silence_start_time > SILENCE_DURATION_LIMIT):
-            if len(audio_buffer) > 0:
-                # Debug: print(f"\n[Sentence End] Cleared Buffer. Len: {len(audio_buffer)}")
-                audio_buffer = np.array([], dtype=np.float32)
-                silence_start_time = None
-                # Gửi tin nhắn rỗng hoặc ký tự đặc biệt nếu muốn Frontend xóa text (tùy chọn)
-
-        # Ngủ cực ngắn để giảm load CPU
-        time.sleep(0.01)
+        # ⚡ Bolt Optimization: Removed redundant sleep and duplicate reset logic.
+        # The blocking queue.get acts as the pacer.
 
 if __name__ == "__main__":
     # Start Thread thu âm
