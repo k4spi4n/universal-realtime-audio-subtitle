@@ -1,4 +1,4 @@
-package com.caas;
+package com.uras.client;
 
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -22,10 +22,26 @@ public class App extends Application {
     @Override
     public void start(Stage controlStage) {
         // --- 1. Subtitle Window (Transparent) ---
-        Label subtitleLabel = new Label("Waiting for python backend...");
-        subtitleLabel.setStyle("-fx-background-color: rgba(0, 0, 0, 0.5); -fx-text-fill: white; -fx-padding: 10px; -fx-font-size: 24px;");
+        // Container for background (Visible box)
+        StackPane subtitleContainer = new StackPane();
+        subtitleContainer.setStyle("-fx-background-color: rgba(0, 0, 0, 0.5); -fx-background-radius: 15px;");
+        subtitleContainer.setMaxSize(900, 120); 
 
-        StackPane subRoot = new StackPane(subtitleLabel);
+        // TextFlow for advanced text handling (Karaoke style)
+        javafx.scene.text.TextFlow subtitleFlow = new javafx.scene.text.TextFlow();
+        subtitleFlow.setTextAlignment(javafx.scene.text.TextAlignment.CENTER);
+        subtitleFlow.setPadding(new javafx.geometry.Insets(10));
+        subtitleFlow.setStyle("-fx-background-color: transparent;");
+
+        // Initial loading text
+        javafx.scene.text.Text loadingText = new javafx.scene.text.Text("URAS Engine Loading...");
+        loadingText.setFill(Color.WHITE);
+        loadingText.setFont(javafx.scene.text.Font.font("System", javafx.scene.text.FontWeight.BOLD, 24));
+        subtitleFlow.getChildren().add(loadingText);
+        
+        subtitleContainer.getChildren().add(subtitleFlow);
+
+        StackPane subRoot = new StackPane(subtitleContainer);
         subRoot.setStyle("-fx-background-color: transparent;");
 
         // Draggable logic
@@ -63,7 +79,7 @@ public class App extends Application {
         Button btnReset = new Button("Reset");
 
         // Engine Setup (ZMQ Listener)
-        engine = new BackendConnector(subtitleLabel, statusLabel);
+        engine = new BackendConnector(subtitleContainer, subtitleFlow, statusLabel);
 
         // Start Python Backend Automatically
         startPythonBackend();
@@ -75,7 +91,7 @@ public class App extends Application {
         
         btnReset.setOnAction(e -> {
             engine.stop();
-            Platform.runLater(() -> subtitleLabel.setText("")); // Clear text
+            Platform.runLater(() -> subtitleFlow.getChildren().clear()); // Clear text
             new Thread(() -> { 
                 try { Thread.sleep(500); } catch (InterruptedException ex) {}
                 Platform.runLater(engine::start);
@@ -85,12 +101,12 @@ public class App extends Application {
         HBox buttons = new HBox(10, btnStart, btnStop, btnReset);
         buttons.setAlignment(Pos.CENTER);
 
-        VBox controlLayout = new VBox(20, new Label("Faster-Whisper (Python) Controller"), statusLabel, buttons);
+        VBox controlLayout = new VBox(20, new Label("Universal Realtime Audio Subtitle"), statusLabel, buttons);
         controlLayout.setAlignment(Pos.CENTER);
         controlLayout.setStyle("-fx-padding: 20px;");
 
         Scene controlScene = new Scene(controlLayout, 350, 200);
-        controlStage.setTitle("Whisper Controller");
+        controlStage.setTitle("URAS Controller");
         controlStage.setScene(controlScene);
         controlStage.show();
 
