@@ -7,7 +7,7 @@
 This project provides a "universal" subtitle solution for any audio playing on your Windows machine: movies, meetings, streams, games,... for over 52 languages.
 It uses a hybrid architecture:
 
-1. **Frontend (JavaFX):** A lightweight, transparent, always-on-top window that overlays subtitles on your screen without interfering with your workflow.
+1. **Frontend (JavaFX):** A hardware accelerated and always-on-top window that overlays subtitles on your screen.
 2. **Backend (Python):** Runs powerful AI models (currently **Qwen3-ASR**) to transcribe audio in real-time with Voice Activity Detection (VAD) to ensure accuracy and silence suppression.
 3. **Communication:** The two components communicate seamlessly via **ZeroMQ (ZMQ)**, ensuring ultra low latency and decoupling the UI from heavy AI inference.
 
