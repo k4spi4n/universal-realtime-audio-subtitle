@@ -66,7 +66,7 @@ FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
 CHUNK = 512
-TRANSCRIBE_INTERVAL = 0.1
+TRANSCRIBE_INTERVAL = 0.2
 MIN_AUDIO_LENGTH = 0.2
 
 # --- TỰ ĐỘNG TÌM STEREO MIX ---
@@ -121,7 +121,7 @@ try:
     model = Qwen3ASRModel.from_pretrained(
         "Qwen/Qwen3-ASR-0.6B",
         dtype=torch.bfloat16, 
-        max_inference_batch_size=1,
+        max_inference_batch_size=-1,
         device_map="cuda:0", 
         attn_implementation="sdpa",  # Scaled Dot Product Attention (tích hợp PyTorch)
         max_new_tokens=128
@@ -196,7 +196,6 @@ def processing_thread():
     
     last_transcribe_time = time.time()
     last_sent_text = ""
-    transcribe_count = 0
 
     # Giới hạn buffer (tính theo số lượng chunks)
     # MAX_BUFFER_LEN (samples) / CHUNK (samples per chunk)
@@ -266,10 +265,7 @@ def processing_thread():
                         print(f"\r> {current_text}" + " " * 30, end="", flush=True)
                         socket.send_string(current_text)
                         last_sent_text = current_text
-                
-                transcribe_count += 1
-                if transcribe_count % 500 == 0:
-                    torch.cuda.empty_cache()
+            
             
             except Exception as e:
                 pass
