@@ -2,29 +2,33 @@ import zmq
 import pyaudio
 import numpy as np
 import time
-from faster_whisper import WhisperModel
 import os
 import threading
 import queue
 import sys
 import io
+import torch
+import logging
 
 # --- CẤU HÌNH HỆ THỐNG ---
-# Fix encoding cho Windows Console
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+logging.getLogger("transformers").setLevel(logging.ERROR)
 
-# Cấu hình ZMQ
+def log(msg):
+    print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+# --- ZMQ SETUP ---
 PORT = 5555
 context = zmq.Context()
 socket = context.socket(zmq.PUB)
 
-# --- AUTO-KILL PORT LOGIC ---
+# --- AUTO-KILL PORT ---
 try:
     socket.bind(f"tcp://*:{PORT}")
 except zmq.ZMQError as e:
     if "Address in use" in str(e):
-        print(f"Port {PORT} busy. Cleaning up...")
+        log(f"Port {PORT} đang bận. Đang dọn dẹp...")
         import subprocess, re
         try:
             res = subprocess.check_output(f"netstat -ano | findstr :{PORT}", shell=True).decode()
@@ -32,152 +36,173 @@ except zmq.ZMQError as e:
                 parts = re.split(r'\s+', line.strip())
                 if len(parts) > 4:
                     subprocess.run(f"taskkill /F /PID {parts[-1]}", shell=True)
-            time.sleep(0.5)
+            time.sleep(1)
             socket.bind(f"tcp://*:{PORT}")
-            print("Port cleaned and bound.")
-        except: pass
-
-# --- CẤU HÌNH AUDIO & MODEL ---
-# Model
-MODEL_SIZE = "turbo"
-device = "cuda"
-compute_type = "float16"
-
-print(f"Loading {MODEL_SIZE} on {device}...")
-model = WhisperModel(MODEL_SIZE, device=device, compute_type=compute_type)
-print("Model Ready.")
-
-# Audio Constants
-RATE = 16000
-CHUNK = 1024 # Buffer phần cứng
-CHUNK_DURATION = CHUNK / RATE 
-FORMAT = pyaudio.paInt16
-CHANNELS = 1
-
-# Queue để chuyển dữ liệu từ luồng thu âm sang luồng xử lý
-raw_queue = queue.Queue()
-
-def input_stream():
-    """Luồng thu âm liên tục không chặn"""
-    p = pyaudio.PyAudio()
-    
-    # Auto-select Stereo Mix/Loopback if available
-    dev_idx = None
-    for i in range(p.get_device_count()):
-        info = p.get_device_info_by_index(i)
-        if "mix" in info['name'].lower():
-            dev_idx = i
-            print(f"Using Loopback: {info['name']}")
-            break
-
-    stream = p.open(format=FORMAT, channels=CHANNELS, rate=RATE, 
-                    input=True, input_device_index=dev_idx, 
-                    frames_per_buffer=CHUNK)
-    
-    print("Microphone/System Audio Stream Started.")
-    while True:
-        try:
-            data = stream.read(CHUNK, exception_on_overflow=False)
-            raw_queue.put(data)
-        except: break
-
-def main_process():
-    """Luồng xử lý chính: Tích lũy & Nhận diện"""
-    
-    audio_buffer = np.array([], dtype=np.float32)
-    
-    # Các biến kiểm soát trạng thái
-    last_transcribe_time = time.time()
-    silence_start_time = None
-    last_sent_text = ""
-    
-    # Config Logic
-    TRANSCRIBE_INTERVAL = 0.25
-    SILENCE_THRESHOLD_DB = 600  
-    SILENCE_DURATION_LIMIT = 0.5
-    MAX_AUDIO_DURATION = 10.0
-
-    print(">>> ABSOLUTE REALTIME ENGINE (TURBO MODE) <<<")
-    
-    while True:
-        # 1. Lấy dữ liệu từ Queue (Blocking with Timeout)
-        # ⚡ Bolt Optimization: Use blocking wait with timeout instead of busy loop
-        # This reduces CPU idle usage significantly while maintaining responsiveness.
-        new_data_list = []
-        try:
-            # Wait up to 50ms for data (heartbeat).
-            # If no data, we still check VAD/Timers below.
-            first_chunk = raw_queue.get(timeout=0.05)
-            new_data_list.append(first_chunk)
-
-            # Drain remaining data immediately
-            while True:
-                try:
-                    new_data_list.append(raw_queue.get_nowait())
-                except queue.Empty:
-                    break
-        except queue.Empty:
+            log("Đã giải phóng Port thành công.")
+        except Exception:
             pass
 
-        if new_data_list:
-            raw_bytes = b''.join(new_data_list)
-            new_audio = np.frombuffer(raw_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-            audio_buffer = np.concatenate((audio_buffer, new_audio))
-            
-            # --- SIMPLE VAD ---
-            amplitude = np.abs(new_audio).mean() * 32768
-            if amplitude < SILENCE_THRESHOLD_DB:
-                if silence_start_time is None: silence_start_time = time.time()
-            else:
-                silence_start_time = None
+# --- CẤU HÌNH AUDIO REALTIME ---
+FORMAT = pyaudio.paInt16
+CHANNELS = 1
+RATE = 16000
+CHUNK = 128 
+TRANSCRIBE_INTERVAL = 0.1 
 
-        # --- AGGRESSIVE ROLLING BUFFER ---
-        # Chỉ giữ lại 4s cuối cùng bất kể tình huống nào. 
-        # Ưu tiên hiển thị những gì đang nói NGAY BÂY GIỜ.
-        current_duration = len(audio_buffer) / RATE
-        if current_duration > MAX_AUDIO_DURATION:
-            keep_samples = int(RATE * MAX_AUDIO_DURATION)
-            audio_buffer = audio_buffer[-keep_samples:]
+# --- TỰ ĐỘNG TÌM STEREO MIX ---
+def find_stereo_mix_index():
+    p = pyaudio.PyAudio()
+    info = p.get_host_api_info_by_index(0)
+    numdevices = info.get('deviceCount')
+    
+    candidate_id = None
+    candidate_name = ""
+    
+    log("Đang quét thiết bị âm thanh...")
+
+    # Duyệt danh sách để tìm Stereo Mix
+    for i in range(0, numdevices):
+        device_info = p.get_device_info_by_host_api_device_index(0, i)
+        if device_info.get('maxInputChannels') > 0:
+            name = device_info.get('name')
+            # Các từ khóa thường gặp của System Audio
+            if any(k in name.lower() for k in ["stereo mix", "wave out", "what u hear", "loopback"]):
+                candidate_id = i
+                candidate_name = name
+                break # Tìm thấy cái đầu tiên là chốt luôn
+
+    # Logic chọn
+    final_id = 0
+    if candidate_id is not None:
+        final_id = candidate_id
+        log(f"--> TỰ ĐỘNG CHỌN: {candidate_name} (ID: {final_id})")
+    else:
+        # Fallback: Lấy thiết bị mặc định của Windows nếu không tìm thấy Mix
+        try:
+            default_device = p.get_default_input_device_info()
+            final_id = default_device['index']
+            log(f"CẢNH BÁO: Không tìm thấy 'Stereo Mix'. Đang dùng mặc định: {default_device['name']}")
+            log("HÃY BẬT STEREO MIX TRONG WINDOWS SOUND SETTINGS ĐỂ THU ÂM HỆ THỐNG.")
+        except:
+            log("LỖI: Không tìm thấy bất kỳ thiết bị thu âm nào!")
+            sys.exit(1)
+            
+    p.terminate()
+    return final_id
+
+# CHỐT THIẾT BỊ NGAY KHI KHỞI ĐỘNG
+MIC_INDEX = find_stereo_mix_index()
+
+from qwen_asr import Qwen3ASRModel
+
+log("Đang khởi động Qwen3-ASR (GPU)...")
+
+try:
+    if not torch.cuda.is_available():
+        log("LỖI: Script này yêu cầu NVIDIA GPU!")
+        sys.exit(1)
+
+    model = Qwen3ASRModel.from_pretrained(
+        "Qwen/Qwen3-ASR-0.6B",
+        dtype=torch.bfloat16, 
+        max_inference_batch_size=1,
+        device_map="cuda:0", 
+        attn_implementation="sdpa",
+        max_new_tokens=128
+    )
+    log(f"Model Ready! (Mode: System Audio)")
+
+except Exception as e:
+    log(f"LỖI LOAD MODEL: {e}")
+    sys.exit(1)
+
+# Biến Global
+audio_queue = queue.Queue()
+running = True
+
+def audio_stream_thread():
+    p = pyaudio.PyAudio()
+    try:
+        stream = p.open(format=FORMAT,
+                        channels=CHANNELS,
+                        rate=RATE,
+                        input=True,
+                        input_device_index=MIC_INDEX, # Dùng ID đã tự tìm
+                        frames_per_buffer=CHUNK)
         
-        # 2. Transcribe
+        while running:
+            data = stream.read(CHUNK, exception_on_overflow=False)
+            audio_queue.put(data)
+    except Exception as e:
+        log(f"Lỗi Stream Audio: {e}")
+    finally:
+        stream.stop_stream()
+        stream.close()
+        p.terminate()
+
+def processing_thread():
+    global running
+    audio_buffer = np.array([], dtype=np.float32)
+    last_transcribe_time = time.time()
+    last_sent_text = ""
+    
+    log("Server đang chạy. Đang lắng nghe âm thanh hệ thống...")
+    
+    while running:
+        try:
+            chunks = []
+            while not audio_queue.empty():
+                chunks.append(audio_queue.get_nowait())
+            
+            if chunks:
+                raw_data = b''.join(chunks)
+                new_audio = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
+                audio_buffer = np.concatenate((audio_buffer, new_audio))
+                
+                if len(audio_buffer) > RATE * 15:
+                    audio_buffer = audio_buffer[-RATE*10:]
+
+        except queue.Empty:
+            time.sleep(0.001)
+            continue
+
         now = time.time()
-        
-        # Buffer chỉ cần > 0.1s là xử lý ngay
-        if len(audio_buffer) > RATE * 0.1 and (now - last_transcribe_time > TRANSCRIBE_INTERVAL):
+
+        if (now - last_transcribe_time > TRANSCRIBE_INTERVAL) and (len(audio_buffer) > RATE * 0.2):
+            try:
+                with torch.no_grad():
+                    # Gọi model (Bỏ lọc nhiễu, cố định tiếng Việt)
+                    results = model.transcribe(
+                        audio=(audio_buffer, RATE),
+                        language=None
+                    )
+
+                if results and len(results) > 0:
+                    current_text = results[0].text.strip()
+                    
+                    if current_text and current_text != last_sent_text:
+                        print(f"\r> {current_text}" + " " * 30, end="", flush=True)
+                        socket.send_string(current_text)
+                        last_sent_text = current_text
             
-            segments, _ = model.transcribe(
-                audio_buffer, 
-                beam_size=3,                
-                condition_on_previous_text=True,
-                vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=500),
-                word_timestamps=False,
-                compression_ratio_threshold=2.4,
-                log_prob_threshold=-1.0,
-                no_speech_threshold=0.6
-            )
+            except Exception:
+                pass
             
-            text = " ".join([s.text for s in segments]).strip()
-            
-            # Chỉ gửi update khi văn bản thực sự thay đổi
-            if text and text != last_sent_text:
-                print(f"\r> {text}" + " " * 10, end="", flush=True) 
-                socket.send_string(text)
-                last_sent_text = text
-            
+            if len(audio_buffer) > RATE * 5:
+                audio_buffer = audio_buffer[-RATE*2:]
+
             last_transcribe_time = now
 
-        # 3. Logic Reset Buffer (Chốt câu nhanh)
-        if silence_start_time and (now - silence_start_time > SILENCE_DURATION_LIMIT):
-            if len(audio_buffer) > 0:
-                audio_buffer = np.array([], dtype=np.float32)
-                silence_start_time = None
-        
-
 if __name__ == "__main__":
-    # Start Thread thu âm
-    t = threading.Thread(target=input_stream, daemon=True)
-    t.start()
-    
-    # Chạy process chính
-    main_process()
+    t1 = threading.Thread(target=audio_stream_thread)
+    t2 = threading.Thread(target=processing_thread)
+    t1.start()
+    t2.start()
+    try:
+        while True: time.sleep(0.5)
+    except KeyboardInterrupt:
+        log("\nStopping...")
+        running = False
+        t1.join()
+        t2.join()
+        log("Stopped.")
