@@ -27,7 +27,7 @@ It uses a hybrid architecture:
 
 The project is split into two distinct modules:
 
-* **`audio-test/` (Java Client):**
+* **`desktop-client/` (Java Client):**
 * Built with Maven and JavaFX 21.
 * Manages the GUI and lifecycle of the Python backend.
 * Subscribes to `tcp://localhost:5555` to receive text.
@@ -87,7 +87,7 @@ pip install -r requirements.txt
 Navigate to the audio client folder:
 
 ```bash
-cd ../audio-test
+cd ../desktop-client
 mvn clean compile
 
 ```
@@ -96,13 +96,13 @@ mvn clean compile
 
 The easiest way to run the application is using the provided batch script, which builds the Java app and handles the Python execution automatically.
 
-1. Navigate to `audio-test/`.
+1. Navigate to `desktop-client/`.
 2. Double-click **`run_app.bat`**.
 
 Alternatively, via command line:
 
 ```bash
-cd audio-test
+cd desktop-client
 mvn javafx:run
 
 ```
