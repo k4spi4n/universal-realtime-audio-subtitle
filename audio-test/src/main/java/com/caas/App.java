@@ -15,7 +15,7 @@ import javafx.stage.StageStyle;
 
 public class App extends Application {
 
-    private WhisperEngine engine;
+    private BackendConnector engine;
     private Stage subtitleStage;
     private Process pythonProcess;
 
@@ -63,7 +63,7 @@ public class App extends Application {
         Button btnReset = new Button("Reset");
 
         // Engine Setup (ZMQ Listener)
-        engine = new WhisperEngine(subtitleLabel, statusLabel);
+        engine = new BackendConnector(subtitleLabel, statusLabel);
 
         // Start Python Backend Automatically
         startPythonBackend();

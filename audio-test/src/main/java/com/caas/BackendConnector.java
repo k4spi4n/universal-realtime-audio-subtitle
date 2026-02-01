@@ -9,7 +9,7 @@ import org.zeromq.ZMQ;
 import javafx.animation.PauseTransition;
 import javafx.util.Duration;
 
-public class WhisperEngine {
+public class BackendConnector {
 
     private final Label subtitleLabel;
     private final Label statusLabel;
@@ -18,7 +18,7 @@ public class WhisperEngine {
     private Process pythonProcess;
     private PauseTransition autoHideTimer;
 
-    public WhisperEngine(Label subtitleLabel, Label statusLabel) {
+    public BackendConnector(Label subtitleLabel, Label statusLabel) {
         this.subtitleLabel = subtitleLabel;
         this.statusLabel = statusLabel;
 
