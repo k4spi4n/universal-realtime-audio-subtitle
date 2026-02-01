@@ -1,6 +1,6 @@
 # Universal Realtime Audio Subtitle
 
-**A high-performance, real-time subtitle overlay for Windows that captures system audio and generates accurate captions using state-of-the-art AI models.**
+**A high-performance, real-time subtitle overlay for Windows that captures system audio and generates accurate captions using cutting-edge AI models.**
 
 ## 📖 Overview
 
@@ -14,12 +14,11 @@ It uses a hybrid architecture:
 ## ✨ Features
 
 * **System Audio Capture:** Automatically detects and captures "Stereo Mix" to subtitle *computer audio* rather than just the microphone.
-* **Next-Gen AI Accuracy:** Currently utilizes **Qwen3-ASR** for transcription, offering superior performance and speed compared to older models.
+* **Next-Gen AI Accuracy:** Locally utilizes **Qwen3-ASR**, offering automatic languages detection and noisy-background voice transcription with superior accuracy.
 * **Transparent Overlay:**
 * **Draggable:** Move the subtitle bar anywhere on the screen.
 * **Click-through:** (Planned) Doesn't block mouse interaction with windows behind it.
 * **Auto-Hide:** Subtitles fade away after several seconds of silence.
-
 
 * **Smart VAD Integration:** Uses **Silero VAD** to detect speech vs. background noise, preventing AI hallucinations during silence.
 * **Controller Dashboard:** A dedicated control panel to Start, Stop, and Reset the transcription engine.
