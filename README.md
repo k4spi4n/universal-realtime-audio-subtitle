@@ -4,20 +4,21 @@
 
 ## 📖 Overview
 
-This project provides a "universal" subtitle solution for any audio playing on your Windows machine (movies, meetings, streams, games). It uses a hybrid architecture:
+This project provides a "universal" subtitle solution for any audio playing on your Windows machine: movies, meetings, streams, games,... for over 52 languages.
+It uses a hybrid architecture:
 
 1. **Frontend (JavaFX):** A lightweight, transparent, always-on-top window that overlays subtitles on your screen without interfering with your workflow.
 2. **Backend (Python):** Runs powerful AI models (currently **Qwen3-ASR**) to transcribe audio in real-time with Voice Activity Detection (VAD) to ensure accuracy and silence suppression.
-3. **Communication:** The two components communicate seamlessly via **ZeroMQ (ZMQ)**, ensuring low latency and decoupling the UI from heavy AI inference.
+3. **Communication:** The two components communicate seamlessly via **ZeroMQ (ZMQ)**, ensuring ultra low latency and decoupling the UI from heavy AI inference.
 
 ## ✨ Features
 
-* **System Audio Capture:** Automatically detects and captures "Stereo Mix" or "What U Hear" to subtitle *computer audio* rather than just the microphone.
-* **Next-Gen AI Accuracy:** Currently utilizes **Qwen3-ASR-0.6B** for transcription, offering superior performance and speed compared to older models.
+* **System Audio Capture:** Automatically detects and captures "Stereo Mix" to subtitle *computer audio* rather than just the microphone.
+* **Next-Gen AI Accuracy:** Currently utilizes **Qwen3-ASR** for transcription, offering superior performance and speed compared to older models.
 * **Transparent Overlay:**
 * **Draggable:** Move the subtitle bar anywhere on the screen.
 * **Click-through:** (Planned) Doesn't block mouse interaction with windows behind it.
-* **Auto-Hide:** Subtitles fade away after 3 seconds of silence.
+* **Auto-Hide:** Subtitles fade away after several seconds of silence.
 
 
 * **Smart VAD Integration:** Uses **Silero VAD** to detect speech vs. background noise, preventing AI hallucinations during silence.
@@ -38,8 +39,6 @@ The project is split into two distinct modules:
 * Processes audio chunks using `PyAudio` and `NumPy`.
 * Publishes transcribed text via ZeroMQ.
 
-
-
 ## ⚙️ Prerequisites
 
 ### 1. System Audio (Important)
@@ -49,7 +48,7 @@ Since this tool is designed to subtitle *system output*, you must enable **Stere
 1. Open **Sound Settings** > **Sound Control Panel**.
 2. Go to the **Recording** tab.
 3. Right-click and ensure "Show Disabled Devices" is checked.
-4. Right-click **Stereo Mix** (or "What U Hear") and select **Enable**.
+4. Right-click **Stereo Mix** and select **Enable**.
 
 ### 2. Software Requirements
 
@@ -109,36 +108,26 @@ mvn javafx:run
 
 ```
 
-**What happens next?**
-
-1. The **Controller** window will appear (Status: Ready).
-2. The application will automatically launch the internal Python server in the background.
-3. The **Subtitle Overlay** (black transparent bar) will appear at the bottom of your screen.
-4. Play any audio on your computer. If speech is detected, subtitles will appear instantly.
-
 ## 🔧 Configuration
 
 ### Switching Models
 
-Currently, the model is hardcoded in `python-backend/server.py`:
+You can specify the ASR model in `python-backend/server.py`:
 
 ```python
 model = Qwen3ASRModel.from_pretrained("Qwen/Qwen3-ASR-0.6B", ...)
 
 ```
 
-### Troubleshooting
+## 🗺️ Future Roadmap
 
-* **Stuck on "Waiting for python backend...":**
-* Check if the Python backend started correctly. The Java console prints the Python logs.
-* Ensure port `5555` is not blocked.
+We are actively working on expanding the capabilities of this tool. Planned features include:
 
-
-* **No Subtitles Appearing:**
-* Verify **Stereo Mix** is the default recording device or active.
-* Check the console for `[VAD]` logs to see if voice is being detected.
-
-
+* **🌐 Realtime Translation:** Instantly translate captured audio from one language to another (e.g., Japanese Anime audio -> English Subtitles) directly in the overlay.
+* **📝 Meeting Summarization:** Automatically generate and export a concise summary of the conversation or meeting notes after the session ends.
+* **💾 Session Logs:** Save the full transcription history to a text file for later reference.
+* **🎛️ Audio Source Selection:** UI to manually select specific input devices or application audio sources instead of relying solely on "Stereo Mix."
+* **🎨 UI Customization:** Settings to adjust font size, color, background opacity, and overlay position.
 
 ## 🤝 Contributing
 
