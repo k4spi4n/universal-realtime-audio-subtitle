@@ -252,7 +252,7 @@ def processing_thread():
                 # Chuyển deque thành list rồi thành array nhanh hơn concat từng cái
                 full_audio = np.concatenate(list(audio_buffer_chunks))
 
-                with torch.no_grad():
+                with torch.inference_mode():
                     results = model.transcribe(
                         audio=(full_audio, RATE),
                         language=None, 
