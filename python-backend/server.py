@@ -137,6 +137,15 @@ except Exception as e:
 audio_queue = queue.Queue()
 running = True
 
+# Khởi tạo VAD toàn cục (để dùng trong thread thu âm)
+vad_model = None
+if HAS_VAD:
+    try:
+        vad_model = SileroVoiceActivityDetector()
+        log("VAD (pysilero-vad) Pre-loaded for Stream Thread.")
+    except Exception as e:
+        log(f"Lỗi khởi tạo VAD: {e}")
+
 def audio_stream_thread():
     p = pyaudio.PyAudio()
     try:
@@ -148,9 +157,28 @@ def audio_stream_thread():
                         frames_per_buffer=CHUNK,
                         stream_callback=None)
         
+        log("Audio Stream Thread Started (Pre-calc: Float32 & VAD)")
+
         while running:
-            data = stream.read(CHUNK, exception_on_overflow=False)
-            audio_queue.put(data)
+            # 1. Đọc dữ liệu thô (Bytes)
+            raw_data = stream.read(CHUNK, exception_on_overflow=False)
+            
+            # 2. Tính toán trước: VAD
+            is_speech = False
+            if vad_model:
+                try:
+                    if vad_model(raw_data):
+                        is_speech = True
+                except:
+                    pass
+            
+            # 3. Tính toán trước: Convert sang Float32
+            # (Làm ngay lập tức để giảm tải cho luồng xử lý chính)
+            float_data = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
+            
+            # Đẩy cả dữ liệu đã xử lý và flag VAD vào hàng đợi
+            audio_queue.put((float_data, is_speech))
+
     except Exception as e:
         log(f"Lỗi Stream Audio: {e}")
     finally:
@@ -160,80 +188,75 @@ def audio_stream_thread():
 
 def processing_thread():
     global running
-    audio_buffer = np.array([], dtype=np.float32)
+    
+    # Sử dụng deque để quản lý buffer hiệu quả hơn (tránh np.concatenate liên tục)
+    from collections import deque
+    audio_buffer_chunks = deque()
+    current_buffer_length = 0
+    
     last_transcribe_time = time.time()
     last_sent_text = ""
     transcribe_count = 0
 
-    MAX_BUFFER_LEN = int(RATE * 10)
+    # Giới hạn buffer (tính theo số lượng chunks)
+    # MAX_BUFFER_LEN (samples) / CHUNK (samples per chunk)
+    MAX_CHUNKS = int((RATE * 10) / CHUNK)
     
-    # Init VAD
-    vad = None
-    if HAS_VAD:
-        try:
-            vad = SileroVoiceActivityDetector()
-            log("VAD (pysilero-vad) Activated.")
-        except Exception as e:
-            log(f"Lỗi khởi tạo VAD: {e}")
-            vad = None
-
-    # Biến theo dõi hoạt động giọng nói
-    speech_detected = False
+    # Biến theo dõi hoạt động giọng nói (tích lũy từ stream thread)
+    speech_detected_accumulated = False
     
-    log("Server đang chạy. Đang lắng nghe âm thanh hệ thống...")
+    log("Processing Thread Started (Fast Buffer & Inference)")
     
     while running:
         try:
-            chunks = []
-            # Check speech in incoming chunks
-            chunk_speech_found = False
-            
+            # Lấy tất cả dữ liệu từ hàng đợi
+            has_new_data = False
             while not audio_queue.empty():
-                chunk = audio_queue.get_nowait()
-                chunks.append(chunk)
+                float_chunk, chunk_is_speech = audio_queue.get_nowait()
                 
-                if vad:
-                    try:
-                        # pysilero-vad expects bytes (typically 512 samples)
-                        if vad(chunk):
-                            chunk_speech_found = True
-                    except:
-                        pass
+                # Cập nhật trạng thái VAD
+                if chunk_is_speech:
+                    speech_detected_accumulated = True
+                
+                # Thêm vào buffer
+                audio_buffer_chunks.append(float_chunk)
+                current_buffer_length += len(float_chunk)
+                has_new_data = True
             
-            if chunks:
-                if chunk_speech_found:
-                    speech_detected = True
+            if not has_new_data:
+                time.sleep(0.005) # Ngủ ngắn hơn chút
+                continue
 
-                raw_data = b''.join(chunks)
-                new_audio = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
-                audio_buffer = np.concatenate((audio_buffer, new_audio))
-                
-                # Giảm buffer tối đa
-                if len(audio_buffer) > MAX_BUFFER_LEN:
-                    audio_buffer = audio_buffer[-int(RATE*5):]
+            # Quản lý kích thước buffer (Rolling window)
+            while len(audio_buffer_chunks) > MAX_CHUNKS:
+                removed_chunk = audio_buffer_chunks.popleft()
+                current_buffer_length -= len(removed_chunk)
 
         except queue.Empty:
-            time.sleep(0.001)
             continue
 
         now = time.time()
         
-        # Chỉ transcribe nếu có giọng nói mới được phát hiện hoặc không có VAD
-        should_transcribe = (speech_detected or (vad is None))
+        # Logic quyết định transcribe
+        should_transcribe = (speech_detected_accumulated or (vad_model is None))
 
+        # Điều kiện thời gian và độ dài tối thiểu
         if (now - last_transcribe_time > TRANSCRIBE_INTERVAL) and \
-           (len(audio_buffer) > RATE * MIN_AUDIO_LENGTH) and \
+           (current_buffer_length > RATE * MIN_AUDIO_LENGTH) and \
            should_transcribe:
             
-            # Reset flag to avoid repeated transcription of the same speech event
-            # unless new speech is detected in next chunks
-            speech_detected = False 
+            # Reset cờ phát hiện giọng nói
+            speech_detected_accumulated = False 
             
             try:
+                # Gộp buffer chỉ khi cần inference (Lazy concatenation)
+                # Chuyển deque thành list rồi thành array nhanh hơn concat từng cái
+                full_audio = np.concatenate(list(audio_buffer_chunks))
+
                 with torch.no_grad():
                     results = model.transcribe(
-                        audio=(audio_buffer, RATE),
-                        language=None,  # Chỉ định trước để nhanh hơn
+                        audio=(full_audio, RATE),
+                        language=None, 
                     )
 
                 if results and len(results) > 0:
@@ -244,18 +267,19 @@ def processing_thread():
                         socket.send_string(current_text)
                         last_sent_text = current_text
                 
-                # Dọn cache định kỳ
                 transcribe_count += 1
                 if transcribe_count % 500 == 0:
                     torch.cuda.empty_cache()
             
             except Exception as e:
-                # Bỏ qua lỗi im lặng để tránh spam log
                 pass
             
-            # Giữ buffer nhỏ hơn (FIX: Dùng int cho slice)
-            if len(audio_buffer) > RATE * 3:
-                audio_buffer = audio_buffer[-int(RATE*2):]  # Thay đổi từ 1.5 → 2
+            # Sau khi transcribe, nếu buffer quá dài thì cắt bớt để giữ context vừa phải
+            # Giữ lại khoảng 2-3 giây cuối cho context tiếp theo
+            KEEP_CHUNKS = int((RATE * 2.5) / CHUNK)
+            while len(audio_buffer_chunks) > KEEP_CHUNKS:
+                removed = audio_buffer_chunks.popleft()
+                current_buffer_length -= len(removed)
 
             last_transcribe_time = now
 
