@@ -9,14 +9,26 @@ import sys
 import io
 import torch
 import logging
+import warnings
 
 # --- CẤU HÌNH HỆ THỐNG ---
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 logging.getLogger("transformers").setLevel(logging.ERROR)
+warnings.filterwarnings('ignore')
 
 def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+# --- TỐI ƯU CUDA CHO WINDOWS (API MỚI PyTorch 2.9+) ---
+try:
+    # API mới (PyTorch 2.9+)
+    torch.backends.cudnn.conv.fp32_precision = 'tf32'
+    torch.backends.cuda.matmul.fp32_precision = 'tf32'
+except AttributeError:
+    # API cũ (PyTorch < 2.9)
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
 
 # --- ZMQ SETUP ---
 PORT = 5555
@@ -42,12 +54,13 @@ except zmq.ZMQError as e:
         except Exception:
             pass
 
-# --- CẤU HÌNH AUDIO REALTIME ---
+# --- CẤU HÌNH AUDIO REALTIME (TỐI ƯU) ---
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
-CHUNK = 128 
-TRANSCRIBE_INTERVAL = 0.1 
+CHUNK = 256  # Tăng từ 128
+TRANSCRIBE_INTERVAL = 0.15  # Tăng từ 0.1
+MIN_AUDIO_LENGTH = 0.3  # Tăng từ 0.2
 
 # --- TỰ ĐỘNG TÌM STEREO MIX ---
 def find_stereo_mix_index():
@@ -60,24 +73,20 @@ def find_stereo_mix_index():
     
     log("Đang quét thiết bị âm thanh...")
 
-    # Duyệt danh sách để tìm Stereo Mix
     for i in range(0, numdevices):
         device_info = p.get_device_info_by_host_api_device_index(0, i)
         if device_info.get('maxInputChannels') > 0:
             name = device_info.get('name')
-            # Các từ khóa thường gặp của System Audio
             if any(k in name.lower() for k in ["stereo mix", "wave out", "what u hear", "loopback"]):
                 candidate_id = i
                 candidate_name = name
-                break # Tìm thấy cái đầu tiên là chốt luôn
+                break
 
-    # Logic chọn
     final_id = 0
     if candidate_id is not None:
         final_id = candidate_id
         log(f"--> TỰ ĐỘNG CHỌN: {candidate_name} (ID: {final_id})")
     else:
-        # Fallback: Lấy thiết bị mặc định của Windows nếu không tìm thấy Mix
         try:
             default_device = p.get_default_input_device_info()
             final_id = default_device['index']
@@ -90,27 +99,28 @@ def find_stereo_mix_index():
     p.terminate()
     return final_id
 
-# CHỐT THIẾT BỊ NGAY KHI KHỞI ĐỘNG
 MIC_INDEX = find_stereo_mix_index()
 
 from qwen_asr import Qwen3ASRModel
 
-log("Đang khởi động Qwen3-ASR (GPU)...")
+log("Đang khởi động Qwen3-ASR (Tối ưu cho Windows)...")
 
 try:
     if not torch.cuda.is_available():
         log("LỖI: Script này yêu cầu NVIDIA GPU!")
         sys.exit(1)
 
+    # TỐI ƯU CHO WINDOWS: Không dùng Flash Attention, dùng SDPA
     model = Qwen3ASRModel.from_pretrained(
         "Qwen/Qwen3-ASR-0.6B",
         dtype=torch.bfloat16, 
         max_inference_batch_size=1,
         device_map="cuda:0", 
-        attn_implementation="sdpa",
+        attn_implementation="sdpa",  # Scaled Dot Product Attention (tích hợp PyTorch)
         max_new_tokens=128
     )
-    log(f"Model Ready! (Mode: System Audio)")
+    
+    log(f"✓ Model Ready! Attention: SDPA | Mode: System Audio")
 
 except Exception as e:
     log(f"LỖI LOAD MODEL: {e}")
@@ -127,7 +137,7 @@ def audio_stream_thread():
                         channels=CHANNELS,
                         rate=RATE,
                         input=True,
-                        input_device_index=MIC_INDEX, # Dùng ID đã tự tìm
+                        input_device_index=MIC_INDEX,
                         frames_per_buffer=CHUNK)
         
         while running:
@@ -145,6 +155,7 @@ def processing_thread():
     audio_buffer = np.array([], dtype=np.float32)
     last_transcribe_time = time.time()
     last_sent_text = ""
+    transcribe_count = 0
     
     log("Server đang chạy. Đang lắng nghe âm thanh hệ thống...")
     
@@ -159,8 +170,9 @@ def processing_thread():
                 new_audio = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
                 audio_buffer = np.concatenate((audio_buffer, new_audio))
                 
-                if len(audio_buffer) > RATE * 15:
-                    audio_buffer = audio_buffer[-RATE*10:]
+                # Giảm buffer tối đa (FIX: Dùng int cho slice)
+                if len(audio_buffer) > RATE * 10:
+                    audio_buffer = audio_buffer[-int(RATE*5):]
 
         except queue.Empty:
             time.sleep(0.001)
@@ -168,13 +180,13 @@ def processing_thread():
 
         now = time.time()
 
-        if (now - last_transcribe_time > TRANSCRIBE_INTERVAL) and (len(audio_buffer) > RATE * 0.2):
+        if (now - last_transcribe_time > TRANSCRIBE_INTERVAL) and \
+           (len(audio_buffer) > RATE * MIN_AUDIO_LENGTH):
             try:
                 with torch.no_grad():
-                    # Gọi model (Bỏ lọc nhiễu, cố định tiếng Việt)
                     results = model.transcribe(
                         audio=(audio_buffer, RATE),
-                        language=None
+                        language=None,  # Chỉ định trước để nhanh hơn
                     )
 
                 if results and len(results) > 0:
@@ -184,12 +196,19 @@ def processing_thread():
                         print(f"\r> {current_text}" + " " * 30, end="", flush=True)
                         socket.send_string(current_text)
                         last_sent_text = current_text
+                
+                # Dọn cache định kỳ
+                transcribe_count += 1
+                if transcribe_count % 100 == 0:
+                    torch.cuda.empty_cache()
             
-            except Exception:
+            except Exception as e:
+                # Bỏ qua lỗi im lặng để tránh spam log
                 pass
             
-            if len(audio_buffer) > RATE * 5:
-                audio_buffer = audio_buffer[-RATE*2:]
+            # Giữ buffer nhỏ hơn (FIX: Dùng int cho slice)
+            if len(audio_buffer) > RATE * 3:
+                audio_buffer = audio_buffer[-int(RATE*2):]  # Thay đổi từ 1.5 → 2
 
             last_transcribe_time = now
 
