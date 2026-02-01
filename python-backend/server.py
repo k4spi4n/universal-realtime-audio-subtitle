@@ -148,6 +148,8 @@ if HAS_VAD:
 
 def audio_stream_thread():
     p = pyaudio.PyAudio()
+    INT16_SCALE = np.float32(1.0 / 32768.0)
+    
     try:
         stream = p.open(format=FORMAT,
                         channels=CHANNELS,
@@ -171,12 +173,10 @@ def audio_stream_thread():
                         is_speech = True
                 except:
                     pass
-            
-            # 3. Tính toán trước: Convert sang Float32
-            # (Làm ngay lập tức để giảm tải cho luồng xử lý chính)
-            float_data = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
-            
-            # Đẩy cả dữ liệu đã xử lý và flag VAD vào hàng đợi
+
+            float_data = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32)
+            float_data *= INT16_SCALE
+
             audio_queue.put((float_data, is_speech))
 
     except Exception as e:
