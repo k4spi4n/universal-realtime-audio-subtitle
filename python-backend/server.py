@@ -270,9 +270,7 @@ def processing_thread():
             except Exception as e:
                 pass
             
-            # Sau khi transcribe, nếu buffer quá dài thì cắt bớt để giữ context vừa phải
-            # Giữ lại khoảng 2-3 giây cuối cho context tiếp theo
-            KEEP_CHUNKS = int((RATE * 2.5) / CHUNK)
+            KEEP_CHUNKS = int((RATE * 2) / CHUNK)
             while len(audio_buffer_chunks) > KEEP_CHUNKS:
                 removed = audio_buffer_chunks.popleft()
                 current_buffer_length -= len(removed)
