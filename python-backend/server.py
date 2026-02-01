@@ -58,9 +58,9 @@ except zmq.ZMQError as e:
 FORMAT = pyaudio.paInt16
 CHANNELS = 1
 RATE = 16000
-CHUNK = 256  # Tăng từ 128
-TRANSCRIBE_INTERVAL = 0.15  # Tăng từ 0.1
-MIN_AUDIO_LENGTH = 0.3  # Tăng từ 0.2
+CHUNK = 512
+TRANSCRIBE_INTERVAL = 0.1
+MIN_AUDIO_LENGTH = 0.2
 
 # --- TỰ ĐỘNG TÌM STEREO MIX ---
 def find_stereo_mix_index():
@@ -138,7 +138,8 @@ def audio_stream_thread():
                         rate=RATE,
                         input=True,
                         input_device_index=MIC_INDEX,
-                        frames_per_buffer=CHUNK)
+                        frames_per_buffer=CHUNK,
+                        stream_callback=None)
         
         while running:
             data = stream.read(CHUNK, exception_on_overflow=False)
@@ -156,6 +157,8 @@ def processing_thread():
     last_transcribe_time = time.time()
     last_sent_text = ""
     transcribe_count = 0
+
+    MAX_BUFFER_LEN = int(RATE * 10)
     
     log("Server đang chạy. Đang lắng nghe âm thanh hệ thống...")
     
@@ -171,7 +174,7 @@ def processing_thread():
                 audio_buffer = np.concatenate((audio_buffer, new_audio))
                 
                 # Giảm buffer tối đa (FIX: Dùng int cho slice)
-                if len(audio_buffer) > RATE * 10:
+                if len(audio_buffer) > MAX_BUFFER_LEN:
                     audio_buffer = audio_buffer[-int(RATE*5):]
 
         except queue.Empty:
@@ -199,7 +202,7 @@ def processing_thread():
                 
                 # Dọn cache định kỳ
                 transcribe_count += 1
-                if transcribe_count % 100 == 0:
+                if transcribe_count % 500 == 0:
                     torch.cuda.empty_cache()
             
             except Exception as e:
