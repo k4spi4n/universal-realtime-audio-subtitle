@@ -11,6 +11,13 @@ import torch
 import logging
 import warnings
 
+# --- VAD INTEGRATION ---
+try:
+    from pysilero_vad import SileroVoiceActivityDetector
+    HAS_VAD = True
+except ImportError:
+    HAS_VAD = False
+
 # --- CẤU HÌNH HỆ THỐNG ---
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
@@ -160,20 +167,48 @@ def processing_thread():
 
     MAX_BUFFER_LEN = int(RATE * 10)
     
+    # Init VAD
+    vad = None
+    if HAS_VAD:
+        try:
+            vad = SileroVoiceActivityDetector()
+            log("VAD (pysilero-vad) Activated.")
+        except Exception as e:
+            log(f"Lỗi khởi tạo VAD: {e}")
+            vad = None
+
+    # Biến theo dõi hoạt động giọng nói
+    speech_detected = False
+    
     log("Server đang chạy. Đang lắng nghe âm thanh hệ thống...")
     
     while running:
         try:
             chunks = []
+            # Check speech in incoming chunks
+            chunk_speech_found = False
+            
             while not audio_queue.empty():
-                chunks.append(audio_queue.get_nowait())
+                chunk = audio_queue.get_nowait()
+                chunks.append(chunk)
+                
+                if vad:
+                    try:
+                        # pysilero-vad expects bytes (typically 512 samples)
+                        if vad(chunk):
+                            chunk_speech_found = True
+                    except:
+                        pass
             
             if chunks:
+                if chunk_speech_found:
+                    speech_detected = True
+
                 raw_data = b''.join(chunks)
                 new_audio = np.frombuffer(raw_data, dtype=np.int16).astype(np.float32) / 32768.0
                 audio_buffer = np.concatenate((audio_buffer, new_audio))
                 
-                # Giảm buffer tối đa (FIX: Dùng int cho slice)
+                # Giảm buffer tối đa
                 if len(audio_buffer) > MAX_BUFFER_LEN:
                     audio_buffer = audio_buffer[-int(RATE*5):]
 
@@ -182,9 +217,18 @@ def processing_thread():
             continue
 
         now = time.time()
+        
+        # Chỉ transcribe nếu có giọng nói mới được phát hiện hoặc không có VAD
+        should_transcribe = (speech_detected or (vad is None))
 
         if (now - last_transcribe_time > TRANSCRIBE_INTERVAL) and \
-           (len(audio_buffer) > RATE * MIN_AUDIO_LENGTH):
+           (len(audio_buffer) > RATE * MIN_AUDIO_LENGTH) and \
+           should_transcribe:
+            
+            # Reset flag to avoid repeated transcription of the same speech event
+            # unless new speech is detected in next chunks
+            speech_detected = False 
+            
             try:
                 with torch.no_grad():
                     results = model.transcribe(
